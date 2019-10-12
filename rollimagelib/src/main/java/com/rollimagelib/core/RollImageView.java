@@ -2,6 +2,7 @@ package com.rollimagelib.core;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapRegionDecoder;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -12,6 +13,9 @@ import android.util.AttributeSet;
 import android.view.View;
 
 import com.rollimagelib.listener.RollListener;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 public class RollImageView extends View implements RollListener {
     private Bitmap mBitmap;
@@ -28,14 +32,23 @@ public class RollImageView extends View implements RollListener {
     int[] location = new int[2];
     private Rect mWindowVisibleDisplayFrame = new Rect();
 
+    private BlockImageLoader mBlockImageLoader;
+    private BitmapRegionDecoder bitmapRegionDecoder;
+
+
     public RollImageView(Context context) {
         super(context);
+        init();
     }
 
     public RollImageView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        init();
     }
 
+    private void init() {
+        mBlockImageLoader = new BlockImageLoader();
+    }
 
     public void setScale(float scale, float offsetX, float offsetY) {
         this.mScale = scale;
@@ -66,13 +79,23 @@ public class RollImageView extends View implements RollListener {
         imageRect.bottom = (int) Math.ceil((visibilityRect.bottom - mOffsetY) * imageScale);
 
         int saveCount = canvas.save();
-        canvas.drawBitmap(data.bitmap, data.srcRect, drawRect, null);
+        Bitmap data = mBlockImageLoader.getRegionBitmap(imageRect);
+        canvas.drawBitmap(data, imageRect, imageRect, null);
         canvas.restoreToCount(saveCount);
     }
 
 
     public void setBitmap(Bitmap bitmap) {
         this.mBitmap = bitmap;
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        mBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        byte[] byteArray = stream.toByteArray();
+        try {
+            bitmapRegionDecoder = BitmapRegionDecoder.newInstance(byteArray,0, byteArray.length, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mBlockImageLoader.setBitmapRegionDecoder(bitmapRegionDecoder);
     }
 
 
